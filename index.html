@@ -1,0 +1,737 @@
+/* =========================
+   DATA
+========================= */
+
+const stations = {
+
+    A:{
+        id:"A",
+        name:"Station A — Central Plaza",
+        short:"Station A",
+        distance:1.2,
+        power:50,
+        crowd:38,
+        wait:8,
+        load:52,
+        x:"23%",
+        y:"28%"
+    },
+
+    B:{
+        id:"B",
+        name:"Station B — Riverside Hub",
+        short:"Station B",
+        distance:3.4,
+        power:60,
+        crowd:64,
+        wait:16,
+        load:71,
+        x:"69%",
+        y:"58%"
+    },
+
+    C:{
+        id:"C",
+        name:"Station C — Tech Park",
+        short:"Station C",
+        distance:2.1,
+        power:40,
+        crowd:27,
+        wait:5,
+        load:43,
+        x:"45%",
+        y:"75%"
+    }
+
+};
+
+let battery = 42;
+let priority = "Economy";
+let selectedStation = null;
+
+
+/* =========================
+   BATTERY
+========================= */
+
+function updateBattery(){
+
+    battery =
+        Number(
+            document.getElementById("battery").value
+        );
+
+    document.getElementById("batteryValue")
+        .textContent = battery;
+
+    recommend();
+}
+
+
+/* =========================
+   PRIORITY
+========================= */
+
+function setPriority(value,button){
+
+    priority = value;
+
+    document
+        .querySelectorAll(".buttons .btn")
+        .forEach(btn=>{
+            btn.classList.remove("active");
+        });
+
+    button.classList.add("active");
+
+    recommend();
+}
+
+
+/* =========================
+   SCORING
+========================= */
+
+function score(station){
+
+    let s = station;
+
+    let score = 100;
+
+    /* distance */
+
+    score -= s.distance * 8;
+
+    /* crowd */
+
+    score -= s.crowd * 0.45;
+
+    /* wait */
+
+    score -= s.wait * 1.5;
+
+
+    /* priority */
+
+    if(priority === "Emergency"){
+
+        score += (100 - s.crowd) * .7;
+        score -= s.wait * 2;
+
+    }
+
+    else if(priority === "Urgent"){
+
+        score -= s.wait;
+
+    }
+
+    else if(priority === "Economy"){
+
+        score += s.power * .25;
+
+    }
+
+    else if(priority === "Eco"){
+
+        score += (100 - s.load) * .6;
+        score -= s.load * .15;
+
+    }
+
+
+    /* low battery */
+
+    if(battery < 20){
+
+        score += (100 - s.wait) * .5;
+
+    }
+
+    return score;
+}
+
+
+/* =========================
+   RECOMMENDATION
+========================= */
+
+function recommend(){
+
+    let list =
+        Object.values(stations)
+        .sort((a,b)=>score(b)-score(a));
+
+    let best = list[0];
+
+    document.getElementById("bestStation")
+        .textContent = best.short;
+
+    document.getElementById("bestWait")
+        .textContent = best.wait;
+
+    document.getElementById("gridLoad")
+        .textContent = best.load;
+
+    renderStations();
+
+}
+
+
+/* =========================
+   STATION CARDS
+========================= */
+
+function renderStations(){
+
+    let container =
+        document.getElementById("stationGrid");
+
+    let sorted =
+        Object.values(stations)
+        .sort((a,b)=>score(b)-score(a));
+
+    container.innerHTML = "";
+
+    sorted.forEach((s,index)=>{
+
+        let recommended =
+            index === 0
+            ? `<span style="
+                color:#00e5ff;
+                font-size:11px;
+                margin-left:6px;
+              ">
+              ★ RECOMMENDED
+              </span>`
+            : "";
+
+        container.innerHTML += `
+
+        <div class="station">
+
+            <h3>
+                ${s.name}
+                ${recommended}
+            </h3>
+
+            <div class="distance">
+                ${s.distance} km away
+            </div>
+
+            <div class="station-info">
+
+                <div class="info">
+                    <small>Power</small>
+                    <strong>${s.power} kW</strong>
+                </div>
+
+                <div class="info">
+                    <small>Wait</small>
+                    <strong>${s.wait} min</strong>
+                </div>
+
+                <div class="info">
+                    <small>Crowd</small>
+                    <strong>${s.crowd}%</strong>
+                </div>
+
+                <div class="info">
+                    <small>Grid</small>
+                    <strong>${s.load}%</strong>
+                </div>
+
+            </div>
+
+            <div style="margin-top:15px">
+
+                <small>
+                    Station occupancy
+                </small>
+
+                <div class="progress">
+                    <div
+                        style="width:${s.crowd}%"
+                    ></div>
+                </div>
+
+            </div>
+
+            <button
+                class="btn active"
+                style="width:100%;margin-top:15px"
+                onclick="routeTo('${s.id}')"
+            >
+                🛣️ Route Here
+            </button>
+
+        </div>
+        `;
+
+    });
+
+}
+
+
+/* =========================
+   MAP POPUP
+========================= */
+
+function showStation(id){
+
+    selectedStation = stations[id];
+
+    let popup =
+        document.getElementById("popup");
+
+    document.getElementById("popupTitle")
+        .textContent =
+        selectedStation.name;
+
+    document.getElementById("popupText")
+        .innerHTML = `
+
+        Distance:
+        <b>${selectedStation.distance} km</b><br>
+
+        Charger:
+        <b>${selectedStation.power} kW</b><br>
+
+        Crowd:
+        <b>${selectedStation.crowd}%</b><br>
+
+        Estimated wait:
+        <b>${selectedStation.wait} min</b>
+
+    `;
+
+    popup.style.display = "block";
+
+    popup.style.left =
+        `calc(${selectedStation.x} + 25px)`;
+
+    popup.style.top =
+        `calc(${selectedStation.y} - 30px)`;
+
+}
+
+
+/* =========================
+   ROUTE
+========================= */
+
+function routeSelected(){
+
+    if(selectedStation){
+
+        routeTo(selectedStation.id);
+
+    }
+
+}
+
+
+function routeTo(id){
+
+    selectedStation =
+        stations[id];
+
+    drawRoute(selectedStation);
+
+    document.getElementById("locationStatus")
+        .innerHTML =
+        `🛣️ Route created to
+        <b>${selectedStation.name}</b>
+        • ${selectedStation.distance} km
+        • Approx. ${Math.ceil(selectedStation.distance*3)} min`;
+
+}
+
+
+function routeBest(){
+
+    let best =
+        Object.values(stations)
+        .sort((a,b)=>score(b)-score(a))[0];
+
+    selectedStation = best;
+
+    drawRoute(best);
+
+    document.getElementById("locationStatus")
+        .innerHTML =
+        `⭐ Recommended route:
+        <b>${best.name}</b>
+        • ${best.distance} km
+        • ${best.wait} min wait`;
+
+}
+
+
+function drawRoute(station){
+
+    let route =
+        document.getElementById("routeLine");
+
+    /*
+       SVG uses normalized coordinates.
+       These coordinates visually connect
+       the user marker to the station.
+    */
+
+    let x =
+        parseFloat(station.x);
+
+    let y =
+        parseFloat(station.y);
+
+    let map =
+        document.getElementById("map");
+
+    let width =
+        map.clientWidth;
+
+    let height =
+        map.clientHeight;
+
+    let sx = width * .13;
+    let sy = height * .70;
+
+    let ex = width * x / 100;
+    let ey = height * y / 100;
+
+    let midx = (sx + ex) / 2;
+
+    let d =
+        `M ${sx} ${sy}
+         Q ${midx} ${ey-70}
+           ${ex} ${ey}`;
+
+    route.setAttribute("d",d);
+
+    route.style.display = "block";
+
+}
+
+
+/* =========================
+   SEARCH
+========================= */
+
+function searchStation(){
+
+    let query =
+        document.getElementById("search")
+        .value
+        .toLowerCase()
+        .trim();
+
+    let ids = ["A","B","C"];
+
+    ids.forEach(id=>{
+
+        let marker =
+            document.querySelector(
+                ".marker." + id.toLowerCase()
+            );
+
+        let station =
+            stations[id];
+
+        let match =
+            station.name
+            .toLowerCase()
+            .includes(query);
+
+        marker.style.opacity =
+            query === "" || match
+            ? "1"
+            : ".2";
+
+    });
+
+}
+
+
+/* =========================
+   GEOLOCATION
+========================= */
+
+function useLocation(){
+
+    let status =
+        document.getElementById(
+            "locationStatus"
+        );
+
+    if(!navigator.geolocation){
+
+        status.textContent =
+            "Geolocation is not supported by this browser.";
+
+        return;
+    }
+
+    status.textContent =
+        "📡 Requesting your location...";
+
+    navigator.geolocation.getCurrentPosition(
+
+        function(position){
+
+            let lat =
+                position.coords.latitude;
+
+            let lon =
+                position.coords.longitude;
+
+            status.innerHTML =
+                `📍 Location detected successfully.
+                 <br>
+                 <small>
+                 Lat: ${lat.toFixed(4)}
+                 • Lon: ${lon.toFixed(4)}
+                 </small>`;
+
+            /*
+              For this offline demo we don't move
+              the map using real geographic projection.
+              We only confirm browser location permission.
+            */
+
+            let marker =
+                document.getElementById("userMarker");
+
+            marker.style.left = "13%";
+            marker.style.top = "70%";
+
+        },
+
+        function(){
+
+            status.textContent =
+                "⚠️ Location permission was not granted. Demo location is being used.";
+
+        }
+
+    );
+
+}
+
+
+/* =========================
+   WHAT IF
+========================= */
+
+function whatIf(){
+
+    let demand =
+        Number(
+            document.getElementById("demand").value
+        );
+
+    document.getElementById("demandValue")
+        .textContent = demand;
+
+    let impact =
+        document.getElementById("impact");
+
+    if(demand < 35){
+
+        impact.textContent =
+            "Low";
+
+    }
+
+    else if(demand < 70){
+
+        impact.textContent =
+            "Moderate";
+
+    }
+
+    else if(demand < 85){
+
+        impact.textContent =
+            "High";
+
+    }
+
+    else{
+
+        impact.textContent =
+            "Critical";
+
+    }
+
+    /*
+       Update station loads based on
+       simulated grid demand.
+    */
+
+    Object.values(stations)
+        .forEach(s=>{
+
+            let base =
+                s.load;
+
+            let difference =
+                demand - 55;
+
+            s.load =
+                Math.max(
+                    15,
+                    Math.min(
+                        99,
+                        Math.round(
+                            base + difference*.35
+                        )
+                    )
+                );
+
+        });
+
+    recommend();
+
+}
+
+
+/* =========================
+   NETWORK SIMULATION
+========================= */
+
+function simulate(){
+
+    let naive =
+        Math.floor(
+            70 + Math.random()*20
+        );
+
+    let coordinated =
+        Math.floor(
+            35 + Math.random()*20
+        );
+
+    document.getElementById("naiveBar")
+        .style.width =
+        naive + "%";
+
+    document.getElementById("smartBar")
+        .style.width =
+        coordinated + "%";
+
+    let logBox =
+        document.getElementById("log");
+
+    logBox.innerHTML = "";
+
+    let messages = [
+
+        "Scanning charging network...",
+
+        "20 EV drivers detected.",
+
+        "Checking station availability...",
+
+        "Calculating grid demand...",
+
+        "Applying driver priorities...",
+
+        "Redistributing charging demand...",
+
+        "Avoiding overloaded station...", 
+
+        "Coordinated charging schedule created.",
+
+        "Simulation completed successfully."
+
+    ];
+
+    messages.forEach((message,index)=>{
+
+        setTimeout(()=>{
+
+            let line =
+                document.createElement("div");
+
+            line.textContent =
+                `[${new Date().toLocaleTimeString()}] ${message}`;
+
+            logBox.appendChild(line);
+
+            logBox.scrollTop =
+                logBox.scrollHeight;
+
+        },index*350);
+
+    });
+
+}
+
+
+/* =========================
+   LIVE DATA SIMULATION
+========================= */
+
+function simulateLiveData(){
+
+    Object.values(stations)
+        .forEach(s=>{
+
+            let crowdChange =
+                Math.floor(
+                    Math.random()*7
+                ) - 3;
+
+            s.crowd =
+                Math.max(
+                    5,
+                    Math.min(
+                        95,
+                        s.crowd + crowdChange
+                    )
+                );
+
+            s.wait =
+                Math.max(
+                    2,
+                    Math.round(
+                        s.crowd / 5
+                    )
+                );
+
+        });
+
+    recommend();
+
+}
+
+
+/* =========================
+   START APPLICATION
+========================= */
+
+recommend();
+
+whatIf();
+
+simulate();
+
+setInterval(
+    simulateLiveData,
+    15000
+);
+
+window.addEventListener(
+    "resize",
+    ()=>{
+        if(selectedStation){
+            drawRoute(selectedStation);
+        }
+    }
+);
+
+</script>
+
+</body>
+</html>
