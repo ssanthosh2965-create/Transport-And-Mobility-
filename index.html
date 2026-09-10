@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>EV ChargeMind — Smart Charging</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:#071018;color:#eef6f7}
+:root{--green:#39e6a2;--cyan:#4bdcff;--panel:#0d1a24;--muted:#8da4ad;--line:#1d3440}
+header{padding:22px 5%;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;position:sticky;top:0;background:#071018ee;backdrop-filter:blur(12px);z-index:10}
+.logo{font-size:24px;font-weight:800;display:flex;align-items:center;gap:8px}.logo span{color:var(--green)}
+.online{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.5px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 10px 2px #39e6a288;animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+main{width:min(1200px,92%);margin:28px auto}.hero{display:grid;grid-template-columns:1.5fr 1fr;gap:20px;align-items:stretch}
+.panel{background:linear-gradient(145deg,#0e1c26,#09151d);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:0 12px 35px #0005}
+h1{font-size:clamp(30px,5vw,54px);margin:8px 0}.hero p{color:var(--muted);line-height:1.6}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border:1px solid #245646;border-radius:30px;color:var(--green);font-size:12px;letter-spacing:.5px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-top:18px}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:9px;letter-spacing:.5px}
+input[type=range]{width:100%;accent-color:var(--green)}
+button{border:1px solid var(--line);background:transparent;color:#eaf6f7;padding:14px 18px;border-radius:14px;cursor:pointer;margin:4px 4px 4px 0;transition:.2s;font-size:15px;font-weight:600}
+button:hover,button.active{border-color:var(--green);background:#123a35;color:#fff;transform:translateY(-1px)}
+.primary{background:linear-gradient(90deg,#19b87c,#35dca3);color:#03120d;border:0;font-weight:800}
+.station{position:relative;overflow:hidden}.station h3{margin:0 0 7px}.station .dist{color:var(--cyan);font-weight:700}.meter{height:8px;background:#162933;border-radius:20px;overflow:hidden;margin:10px 0}.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--cyan));border-radius:20px}
+.rec{border-color:#2d775d;box-shadow:0 0 25px #26d48b18}.score{position:absolute;right:15px;top:15px;color:var(--green);font-weight:800}
+.map{height:430px;border-radius:16px;position:relative;overflow:hidden;background:#0a1720;border:1px solid var(--line)}
+.map:before,.map:after{content:"";position:absolute;background:#142b35;opacity:.9}.map:before{width:115%;height:35px;top:46%;left:-5%;transform:rotate(-12deg)}.map:after{height:115%;width:30px;left:48%;top:-5%;transform:rotate(20deg)}
+.road{position:absolute;height:14px;background:#193843;border-radius:20px;opacity:.9}.r1{width:75%;top:22%;left:8%;transform:rotate(18deg)}.r2{width:65%;top:72%;left:20%;transform:rotate(-25deg)}.r3{width:55%;top:40%;left:25%;transform:rotate(62deg)}
+.marker{position:absolute;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#11252e;border:2px solid var(--green);color:#fff;cursor:pointer;z-index:3;box-shadow:0 0 0 7px #39e6a21a}.mA{left:25%;top:28%}.mB{left:70%;top:58%}.mC{left:51%;top:78%}.you{left:12%;top:65%;border-color:var(--cyan);box-shadow:0 0 0 7px #4bdcff18}.popup{position:absolute;z-index:5;width:235px;background:#07131b;border:1px solid var(--green);padding:15px;border-radius:13px;display:none;box-shadow:0 15px 40px #000b}.popup strong{display:block;margin-bottom:5px}.legend{position:absolute;z-index:4;left:14px;top:14px;background:#07131bdd;padding:10px;border-radius:10px;font-size:12px;color:var(--muted)}
+.status{margin-top:10px;color:var(--muted);font-size:13px;min-height:20px}.kpi{font-size:26px;font-weight:800}.small{font-size:12px;color:var(--muted)}
+.progress{height:12px;background:#13252e;border-radius:20px;overflow:hidden}.progress i{display:block;height:100%;width:0;background:var(--green);transition:.5s}
+.log{height:180px;overflow:auto;background:#061018;border-radius:12px;padding:12px;font:12px ui-monospace,monospace;color:#8feac7}.log div{margin:6px 0}
+footer{text-align:center;padding:30px;color:#607882;font-size:12px}
+
+.gaugeWrap{display:flex;flex-direction:column;align-items:center;text-align:center}
+.gauge{position:relative;width:220px;height:220px}
+.gauge svg{transform:rotate(-90deg)}
+.gauge .track{fill:none;stroke:#12242e;stroke-width:14}
+.gauge .fill{fill:none;stroke:var(--green);stroke-width:14;stroke-linecap:round;transition:stroke-dashoffset .4s ease}
+.gaugeLabel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gaugeLabel .pct{font-size:40px;font-weight:800}
+.gaugeLabel .cap{font-size:11px;color:var(--muted);letter-spacing:2px;margin-top:4px}
+@media(max-width:800px){.hero,.grid2{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.map{height:360px}header{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">⚡ EV <span>ChargeMind</span></div>
+<div class="online"><span class="dot"></span>SYSTEM ONLINE</div>
+</header>
+<main>
+<section class="hero">
+<div class="panel">
+<span class="badge">⚡ GRID-AWARE EV CHARGING INTELLIGENCE</span>
+<h1>Charge smarter.<br><span style="color:var(--green)">Reduce grid stress.</span></h1>
+<p>Find the best charging station using battery level, driver priority, crowding, charging power and simulated grid demand.</p>
+<button class="primary" onclick="recommend()">⚡ Find Best Charger</button>
+<button onclick="simulate()">▶ Run Network Simulation</button>
+<div class="status" id="status">System ready. All demand/crowd values are simulated for demonstration.</div>
+</div>
+
+<div class="panel gaugeWrap">
+<label>BATTERY LEVEL</label>
+<div class="gauge">
+<svg width="220" height="220" viewBox="0 0 220 220">
+<circle class="track" cx="110" cy="110" r="95"></circle>
+<circle class="fill" id="gaugeFill" cx="110" cy="110" r="95"></circle>
+</svg>
+<div class="gaugeLabel"><span class="pct"><span id="batVal">42</span>%</span><span class="cap">BATTERY</span></div>
+</div>
+<input id="battery" type="range" min="5" max="95" value="42" oninput="updateBattery()" style="margin-top:10px">
+<div style="margin-top:14px;width:100%"><label>DRIVER PRIORITY</label>
+<button class="priority active" data-p="Emergency" onclick="setPriority(this)">🚨 Emergency</button>
+<button class="priority" data-p="Urgent" onclick="setPriority(this)">⚠️ Urgent</button>
+<button class="priority" data-p="Economy" onclick="setPriority(this)">💰 Economy</button>
+<button class="priority" data-p="Eco" onclick="setPriority(this)">🌱 Eco</button></div>
+</div>
+</section>
+
+<section class="grid">
+<div class="panel"><label>RECOMMENDED STATION</label><div class="kpi" id="bestName">Station A</div><div class="small" id="bestWhy">Best balance of distance, wait and grid load</div></div>
+<div class="panel"><label>EST. WAIT</label><div class="kpi" id="bestWait">8 min</div><div class="small">Simulated live queue</div></div>
+<div class="panel"><label>GRID LOAD</label><div class="kpi" id="gridLoad">58%</div><div class="small">Current area demand</div></div>
+</section>
+
+<section class="panel" style="margin-top:18px">
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+<div><h2 style="margin:0">🗺️ Live Charging Map</h2><div class="small">Interactive demo map — click a station</div></div>
+<div><input id="search" placeholder="Search station..." style="padding:10px;border-radius:10px;border:1px solid var(--line);background:#09151d;color:white" oninput="searchStation()">
+<button onclick="useLocation()">📍 Use my location</button><button class="primary" onclick="routeBest()">🛣️ Route to recommendation</button></div>
+</div>
+<div class="map" id="map" style="margin-top:15px">
+<div class="legend">🟢 Charging station &nbsp; 🔵 You<br>Click a marker for details</div>
+<div class="road r1"></div><div class="road r2"></div><div class="road r3"></div>
+<div class="marker mA" data-station="A" onclick="showStation('A')">⚡</div>
+<div class="marker mB" data-station="B" onclick="showStation('B')">⚡</div>
+<div class="marker mC" data-station="C" onclick="showStation('C')">⚡</div>
+<div class="marker you" id="you">●</div>
+<svg id="routeSvg" style="position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none"></svg>
+<div class="popup" id="popup"></div>
+</div>
+<div class="status" id="locationStatus">Location not requested.</div>
+</section>
+
+<section>
+<h2>⚡ Charging Stations</h2>
+<div class="grid" id="stations"></div>
+</section>
+
+<section class="grid2">
+<div class="panel">
+<h2 style="margin-top:0">🎛️ What-if Simulator</h2>
+<p class="small">See how the recommendation changes as grid demand changes.</p>
+<label>GRID DEMAND: <span id="demandVal">55</span>%</label>
+<input type="range" min="10" max="100" value="55" oninput="document.getElementById('demandVal').textContent=this.value;whatIf(+this.value)">
+<div class="panel" style="margin-top:15px;background:#08141c"><b id="whatTitle">Balanced plan</b><p id="whatText" class="small">Moderate grid demand — spread charging where practical.</p></div>
+</div>
+<div class="panel">
+<h2 style="margin-top:0">📊 Network Impact</h2>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px">
+<div><label>NAIVE PEAK</label><div class="kpi" id="naive">86%</div></div>
+<div><label>COORDINATED PEAK</label><div class="kpi" style="color:var(--green)" id="coord">63%</div></div>
+</div>
+<div style="margin-top:15px" class="progress"><i id="bar"></i></div>
+<div class="small" style="margin-top:8px">Lower coordinated peak = less grid stress.</div>
+</div>
+</section>
+
+<section class="panel" style="margin-top:18px">
+<h2 style="margin-top:0">🧠 Coordination Log</h2><div class="log" id="log"><div>[SYSTEM] ChargeMind initialized.</div><div>[GRID] Forecast engine online.</div></div>
+</section>
+</main>
+<footer>Interactive single-file prototype · No API key required · Map, crowd, demand and charging data are simulated for demonstration.</footer>
+
+<script>
+const stations={
+ A:{name:"Station A — Central Plaza",dist:1.2,power:50,crowd:38,wait:8,load:52},
+ B:{name:"Station B — Riverside Hub",dist:3.4,power:60,crowd:64,wait:16,load:71},
+ C:{name:"Station C — Tech Park",dist:2.1,power:40,crowd:27,wait:5,load:43}
+};
+let priority="Emergency", battery=42, selected="A";
+const GAUGE_R=95, GAUGE_C=2*Math.PI*GAUGE_R;
+
+function updateGauge(){
+ const fill=document.getElementById("gaugeFill");
+ fill.style.strokeDasharray=GAUGE_C;
+ fill.style.strokeDashoffset=GAUGE_C-(battery/100)*GAUGE_C;
+}
+function updateBattery(){battery=+document.getElementById("battery").value;document.getElementById("batVal").textContent=battery;updateGauge();recommend()}
+function setPriority(btn){document.querySelectorAll(".priority").forEach(x=>x.classList.remove("active"));btn.classList.add("active");priority=btn.dataset.p;recommend();log("DRIVER","Priority set to "+priority)}
+function score(s){
+ let urgency=priority==="Emergency"?1.6:priority==="Urgent"?1.25:priority==="Economy"?.9:.75;
+ let lowBattery=(100-battery)/100;
+ return s.power*.6*urgency + (100-s.crowd)*.5 + (100-s.load)*.45 - s.dist*10 + lowBattery*25;
+}
+function recommend(){
+ let keys=Object.keys(stations),best=keys.sort((a,b)=>score(stations[b])-score(stations[a]))[0],s=stations[best];selected=best;
+ document.getElementById("bestName").textContent=s.name.replace("Station ","");
+ document.getElementById("bestWait").textContent=s.wait+" min";
+ document.getElementById("gridLoad").textContent=s.load+"%";
+ document.getElementById("bestWhy").textContent=`${s.dist} km · ${s.power} kW · ${s.crowd}% crowd · priority: ${priority}`;
+ document.querySelectorAll(".station").forEach(x=>x.classList.remove("rec"));
+ let card=document.getElementById("card"+best);if(card)card.classList.add("rec");
+ log("AI","Recommended "+s.name+" based on battery, priority, wait and grid load.");
+ showStation(best,true);
+}
+function renderStations(){
+ document.getElementById("stations").innerHTML=Object.entries(stations).map(([k,s])=>`
+ <div class="panel station" id="card${k}">
+ <div class="score">${Math.round(score(s))} pts</div><h3>⚡ ${s.name}</h3>
+ <div class="dist">${s.dist} km · ${s.power} kW</div>
+ <div class="small">Crowd: ${s.crowd}% · Wait: ${s.wait} min · Grid: ${s.load}%</div>
+ <div class="meter"><i style="width:${s.crowd}%"></i></div>
+ <button onclick="showStation('${k}')">View on map</button><button class="primary" onclick="routeTo('${k}')">Route here</button>
+ </div>`).join("");
+ recommend();
+}
+function showStation(k,auto=false){
+ selected=k;let s=stations[k],p=document.getElementById("popup");
+ p.innerHTML=`<strong>${s.name}</strong><span class="small">${s.dist} km · ${s.power} kW charger</span><br><span class="small">Crowd ${s.crowd}% · Wait ${s.wait} min</span><br><button class="primary" onclick="routeTo('${k}')">Build route</button>`;
+ let m=document.querySelector(".m"+k),map=document.getElementById("map");
+ p.style.display="block";p.style.left=Math.min(m.offsetLeft+35,map.clientWidth-250)+"px";p.style.top=Math.max(55,m.offsetTop-20)+"px";
+ if(!auto)log("MAP","Selected "+s.name);
+}
+function routeTo(k){selected=k;drawRoute(k);document.getElementById("locationStatus").textContent=`Route created to ${stations[k].name} · ${stations[k].dist} km · ETA ${(stations[k].dist*3+4).toFixed(0)} min`;log("ROUTE","Navigation route built to "+stations[k].name)}
+function routeBest(){recommend();routeTo(selected)}
+function drawRoute(k){
+ let m=document.querySelector(".m"+k),y=document.getElementById("you"),svg=document.getElementById("routeSvg");
+ let x1=y.offsetLeft+16,y1=y.offsetTop+16,x2=m.offsetLeft+16,y2=m.offsetTop+16;
+ svg.innerHTML=`<defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+ <path d="M${x1},${y1} Q${(x1+x2)/2},${Math.min(y1,y2)-60} ${x2},${y2}" fill="none" stroke="#39e6a2" stroke-width="5" stroke-dasharray="10 8" filter="url(#glow)"/>`;
+}
+function useLocation(){
+ if(!navigator.geolocation){document.getElementById("locationStatus").textContent="Geolocation is not supported by this browser.";return}
+ document.getElementById("locationStatus").textContent="Requesting browser location permission…";
+ navigator.geolocation.getCurrentPosition(pos=>{
+  document.getElementById("locationStatus").textContent=`Location detected (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}). Demo map keeps station positions simulated.`;
+  document.getElementById("you").style.left="10%";document.getElementById("you").style.top="62%";log("GPS","Browser location permission granted.");
+ },()=>{document.getElementById("locationStatus").textContent="Location permission unavailable. You can still use the demo map.";log("GPS","Location permission denied/unavailable.")});
+}
+function searchStation(){
+ let q=document.getElementById("search").value.toLowerCase();
+ document.querySelectorAll(".marker[data-station]").forEach(m=>{let s=stations[m.dataset.station];m.style.opacity=!q||s.name.toLowerCase().includes(q)?"1":".18"});
+}
+function whatIf(d){
+ let title=document.getElementById("whatTitle"),text=document.getElementById("whatText");
+ if(d>80){title.textContent="🌙 Delay flexible charging";text.textContent="High demand — coordinate vehicles to avoid the peak.";}
+ else if(d>55){title.textContent="⚖️ Spread charging";text.textContent="Moderate-high demand — choose lower-load stations where possible.";}
+ else{title.textContent="☀️ Charge now";text.textContent="Low demand — immediate charging has lower network impact.";}
+}
+function simulate(){
+ let naive=78+Math.floor(Math.random()*14),coord=50+Math.floor(Math.random()*17);
+ document.getElementById("naive").textContent=naive+"%";
+ document.getElementById("coord").textContent=coord+"%";
+ document.getElementById("bar").style.width=coord+"%";
+ log("SIM",`20 drivers assigned. Naive peak ${naive}%, coordinated peak ${coord}%.`);
+ log("SIM","Charging loads redistributed away from the simulated peak.");
+ document.getElementById("status").textContent="Simulation complete — see Network Impact and Coordination Log below.";
+}
+function log(type,msg){let el=document.getElementById("log");el.innerHTML+=`<div>[${type}] ${msg}</div>`;el.scrollTop=el.scrollHeight}
+setInterval(()=>{Object.values(stations).forEach(s=>{s.crowd=Math.max(10,Math.min(90,s.crowd+(Math.random()>.5?1:-1)*Math.floor(Math.random()*4)));s.wait=Math.max(2,Math.round(s.crowd/4.5))});renderStations();},15000);
+updateGauge();renderStations();whatIf(55);document.getElementById("bar").style.width="63%";
+</script>
+</body>
+</html>
